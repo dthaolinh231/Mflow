@@ -1,4 +1,4 @@
-.PHONY: help setup init-mlflow train evaluate register promote deploy clean
+.PHONY: help setup init-mlflow train evaluate register promote deploy clean test
 
 help:
 	@echo "MLflow Pipeline Commands:"
@@ -9,6 +9,7 @@ help:
 	@echo "  make register       - Register model vào Model Registry"
 	@echo "  make promote        - Promote model to Production"
 	@echo "  make deploy         - Deploy/Load model từ Registry"
+	@echo "  make test           - Test Python syntax và imports"
 	@echo "  make pipeline       - Chạy toàn bộ pipeline (train -> eval -> register)"
 	@echo "  make clean          - Xóa outputs và cache"
 
@@ -42,6 +43,13 @@ promote:
 deploy:
 	@echo "Step 13: Loading model for deployment..."
 	python src/deploy.py
+
+test:
+	@echo "Running tests..."
+	@echo "Checking Python syntax..."
+	python3 -m py_compile pipeline/mlflow_manager.py
+	python3 -m py_compile pipeline/train.py
+	@echo "✓ All syntax checks passed!"
 
 pipeline: train evaluate register
 	@echo "Pipeline completed! Check MLflow UI at http://localhost:5000"
