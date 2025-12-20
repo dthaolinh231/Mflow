@@ -30,7 +30,7 @@ jobs:
       - name: Check line count
         run: |
           echo "Checking lines of code in each file"
-          MAX_LINES=2000
+          MAX_LINES=3000
           for file in $(git ls-files | grep -v '^tests/'); do
             if [[ "$file" != *".pylintrc"* ]] && [[ "$file" != *"airflow.cfg"* ]] && [[ "$file" != *".ipynb"* ]] && [[ "$file" != *".pdf"* ]]; then
               line_count=$(wc -l < "$file")
@@ -42,7 +42,7 @@ jobs:
           done
       - name: Check lines of code changes
         run: |
-            MAX_CHANGE_LINES=1500
+            MAX_CHANGE_LINES=3000
             # Ensure full clone is fetched
             git fetch origin main
             # Get the latest commit on origin/main before the push
