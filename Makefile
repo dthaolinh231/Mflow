@@ -1,5 +1,5 @@
 SHELL = /bin/bash
-HOST_PYTHON := python3
+HOST_PYTHON := python3.11
 VENV_NAME = mlpipeline_env
 VENV_BIN = ${VENV_NAME}/bin
 PYTHON := ${VENV_BIN}/python
@@ -18,9 +18,10 @@ TEST_FOLDER = tests
 # Environment
 venv:
 	${HOST_PYTHON} -m venv ${VENV_NAME} && \
-	${PYTHON} -m pip install pip setuptools wheel && \
-	${PYTHON} -m pip install -e .[dev] && \
-	${VENV_BIN}/pre-commit install
+	${PYTHON} -m pip install --upgrade pip setuptools wheel && \
+	${PIP} install -r requirements.txt && \
+	${PIP} install pytest flake8 mypy pylint black isort pre-commit && \
+	${VENV_BIN}/pre-commit install || true
 
 # Style
 style:
@@ -29,7 +30,7 @@ style:
 	${ISORT} -rc ./${MAIN_FOLDER}/
 
 test:
-	python -m flake8 ./${MAIN_FOLDER}/
-	python -m mypy ./${MAIN_FOLDER}/
-	python -m pytest -s --durations=0 ${TEST_FOLDER}/
-	python -m pylint ./${MAIN_FOLDER}/
+	${FLAKE8} ./${MAIN_FOLDER}/
+	${MYPY} ./${MAIN_FOLDER}/
+	${PYTEST} -s --durations=0 ${TEST_FOLDER}/
+	${PYLINT} ./${MAIN_FOLDER}/

@@ -6,6 +6,8 @@ __pycache__/
 .Python
 env/
 venv/
+.venv/
+mlpipeline_env/
 ENV/
 build/
 develop-eggs/
