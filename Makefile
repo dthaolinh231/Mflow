@@ -26,7 +26,7 @@ init-mlflow:
 
 train:
 	@echo "Step 1-8: Training model with MLflow tracking..."
-	python src/train.py
+	python -m mlpipeline.cli.train
 
 evaluate:
 	@echo "Step 9: Evaluating model from MLflow..."
@@ -47,8 +47,9 @@ deploy:
 test:
 	@echo "Running tests..."
 	@echo "Checking Python syntax..."
-	python3 -m py_compile pipeline/mlflow_manager.py
-	python3 -m py_compile pipeline/train.py
+	python3 -m py_compile mlpipeline/tracking/mlflow_manager.py
+	python3 -m py_compile mlpipeline/pipelines/train_pipeline.py
+	python3 -m py_compile mlpipeline/cli/train.py
 	@echo "✓ All syntax checks passed!"
 
 pipeline: train evaluate register
