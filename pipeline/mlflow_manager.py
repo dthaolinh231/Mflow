@@ -1,16 +1,7 @@
-"""
-MLflow Manager
-Singleton pattern cho cấu hình MLflow dùng chung toàn pipeline
-
-Bước 1: Init MLflow
-- set_tracking_uri
-- (optional) set_experiment
-- set default tags
-"""
+"""MLflow Manager - Singleton pattern cho cấu hình MLflow dùng chung."""
 
 from __future__ import annotations
 
-import os
 from typing import Optional, Dict
 
 import mlflow
@@ -51,7 +42,19 @@ class MLflowManager:
         instance = cls()
 
         if cls._configured:
-            # Đã cấu hình rồi → không làm gì thêm
             return instance
 
-        # TODO: validate
+        mlflow.set_tracking_uri(tracking_uri)
+        if experiment_name:
+            mlflow.set_experiment(experiment_name)
+
+        if default_tags:
+            for key, value in default_tags.items():
+                mlflow.set_tag(key, value)
+
+        cls._configured = True
+        return instance
+
+    def get_default_tags(self) -> Dict[str, str]:
+        """Trả về default tags cho MLflow runs (placeholder)."""
+        return {}
