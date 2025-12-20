@@ -6,6 +6,7 @@ from typing import Any, Dict, Iterable, Optional
 
 import mlflow
 import mlflow.sklearn
+import mlflow.pyfunc
 
 
 def log_params(params: Dict[str, Any]) -> None:
@@ -82,6 +83,7 @@ def log_artifacts(
         )
 
 
+# 1) Sklearn flavor, retrain, debug, interpret, reuse pipeline
 def log_sklearn_model(
     model: Any,
     artifact_path: str = "model",
@@ -100,4 +102,46 @@ def log_sklearn_model(
         registered_model_name=registered_model_name,
         signature=None,
         input_example=None,
+    )
+
+
+# 2) Pyfunc flavor cho deployment/inference tiêu chuẩn
+class SklearnPyfuncWrapper(mlflow.pyfunc.PythonModel):  # pylint: disable=too-few-public-methods
+    """
+    Wrapper để serve/predict theo chuẩn pyfunc.
+
+    - predict() nhận pandas.DataFrame hoặc numpy array
+    - Trả về numpy array / list
+    """
+
+    def __init__(self, model: Any):
+        self.model = model
+
+    def predict(self, context, model_input):  # pylint: disable=unused-argument
+        """model_input thường là pandas.DataFrame khi serve.
+
+        Args:
+            context: MLflow context (required by interface, not used).
+            model_input: Input data for prediction.
+        """
+        return self.model.predict(model_input)
+
+
+def log_pyfunc_model(
+    model: Any,
+    artifact_path: str = "model_pyfunc",
+    registered_model_name: Optional[str] = None,
+    extra_pip_requirements: Optional[list[str]] = None,
+) -> None:
+    """
+    Log pyfunc model. Mặc định MLflow sẽ cố gắng infer dependencies,
+    nhưng bạn có thể set pip requirements rõ ràng.
+    """
+    pip_reqs = extra_pip_requirements or ["mlflow", "scikit-learn", "pandas", "numpy"]
+
+    mlflow.pyfunc.log_model(
+        artifact_path=artifact_path,
+        python_model=SklearnPyfuncWrapper(model),
+        pip_requirements=pip_reqs,
+        registered_model_name=registered_model_name,
     )

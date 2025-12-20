@@ -17,6 +17,7 @@ from pipeline.training.mlflow_logging import (
     log_params,
     log_metrics,
     log_artifacts,
+    log_pyfunc_model,
     set_tags,
     log_sklearn_model,
 )
@@ -134,7 +135,8 @@ def _log_and_train(state: TrainState) -> None:
     _save_and_log_artifacts(artifact_state)
 
     # Bước 8: Log model
-    log_sklearn_model(model, artifact_path="model")
+    log_sklearn_model(model, artifact_path="model_sklearn")
+    log_pyfunc_model(model, artifact_path="model_pyfunc")
 
 
 def _save_and_log_artifacts(state: ArtifactState) -> None:
