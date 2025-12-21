@@ -18,11 +18,25 @@ Output:
 
 from __future__ import annotations
 
+
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
-
 import os
+
+# ML/metrics imports
+from sklearn.datasets import make_classification
+from sklearn.metrics import (
+    accuracy_score, f1_score, precision_score, recall_score, classification_report
+)
+
+# MLflow
+import mlflow
+
+# Artifacts helpers
+from pipeline.training.mflow_artifacts import (
+    save_classification_report, plot_and_save_confusion_matrix
+)
 
 
 @dataclass(frozen=True)
@@ -73,9 +87,6 @@ class EvaluatePipeline:
         """
         return bool(self.config.tracking_uri and self.config.model_uri)
 
-    # -----------------------------
-    # Data
-    # -----------------------------
     def _prepare_eval_data(self) -> Tuple[Any, Any]:
         """
         Chuẩn bị dữ liệu evaluate
@@ -85,11 +96,15 @@ class EvaluatePipeline:
         - Chuẩn hóa tiền xử lý giống lúc train
         - Trả về: X_eval, y_eval
         """
-        raise NotImplementedError("Placeholder: implement _prepare_eval_data")
+        x, y = make_classification(
+            n_samples=300,
+            n_features=20,
+            n_informative=15,
+            n_redundant=5,
+            random_state=42,
+        )
+        return x, y
 
-    # -----------------------------
-    # Model load
-    # -----------------------------
     def _load_model(self, model_uri: str) -> Any:
         """
         Load model từ MLflow
@@ -98,18 +113,15 @@ class EvaluatePipeline:
         - Dùng mlflow.pyfunc.load_model(model_uri)
         - Hoặc mlflow.sklearn.load_model nếu là sklearn
         - Validations: model_uri hợp lệ, có quyền truy cập
-        """
-        raise NotImplementedError
+        Load model theo pyfunc (an toàn nhất cho models:/ và runs:/)."""
+        return mlflow.pyfunc.load_model(model_uri)
 
-    # -----------------------------
-    # Evaluate
-    # -----------------------------
     def _evaluate(
         self,
         model: Any,
         x_eval: Any,
         y_eval: Any,
-    ) -> Dict[str, float]:
+    ) -> Tuple[Dict[str, float], Any, str]:
         """Tính metrics cho model.
 
         Args:
@@ -120,20 +132,45 @@ class EvaluatePipeline:
         Returns:
             Dict metrics accuracy, f1, precision, recall.
         """
-        raise NotImplementedError("Placeholder: implement _evaluate")
+        y_pred = model.predict(x_eval)
+
+        # Một số pyfunc trả về list/np array shape (n,1) => normalize về 1D
+        if hasattr(y_pred, "ndim") and y_pred.ndim > 1:
+            y_pred = y_pred.ravel()
+
+        metrics: Dict[str, float] = {
+            "accuracy": float(accuracy_score(y_eval, y_pred)),
+            "f1": float(f1_score(y_eval, y_pred)),
+            "precision": float(precision_score(y_eval, y_pred)),
+            "recall": float(recall_score(y_eval, y_pred)),
+        }
+        report_text = classification_report(y_eval, y_pred)
+        return metrics, y_pred, report_text
 
     # -----------------------------
     # Artifacts (optional)
     # -----------------------------
     def _build_artifacts(
         self,
+        y_true: Any,
+        y_pred: Any,
+        report_text: str,
     ) -> Dict[str, Path]:
         """Tạo artifacts đánh giá.
 
         Returns:
             Dict đường dẫn artifacts (ảnh, báo cáo).
         """
-        return {}
+        report_path = save_classification_report(
+            report_text=report_text,
+            out_path=self.out_dir / "classification_report.txt",
+        )
+        cm_path = plot_and_save_confusion_matrix(
+            y_true=y_true,
+            y_pred=y_pred,
+            out_path=self.out_dir / "confusion_matrix.png",
+        )
+        return {"report": report_path, "confusion_matrix": cm_path}
 
     def run(self) -> Dict[str, float]:
         """
@@ -148,7 +185,29 @@ class EvaluatePipeline:
         7) Sinh và log artifacts (cm, report, ...)
         8) Trả về metrics
         """
-        raise NotImplementedError("Placeholder: implement EvaluatePipeline.run")
+        if not self.validate():
+            raise ValueError("EvaluateConfig invalid: tracking_uri and model_uri are required")
+
+        mlflow.set_tracking_uri(self.config.tracking_uri)
+        if self.config.experiment_name:
+            mlflow.set_experiment(self.config.experiment_name)
+
+        run_name = self.config.run_name or "evaluate"
+
+        with mlflow.start_run(run_name=run_name):
+            # tags (optional)
+            if self.config.default_tags:
+                for k, v in self.config.default_tags.items():
+                    mlflow.set_tag(str(k), str(v))
+
+            model = self._load_model(self.config.model_uri)
+            x_eval, y_eval = self._prepare_eval_data()
+            metrics, y_pred, report_text = self._evaluate(model, x_eval, y_eval)
+            mlflow.log_metrics(metrics)
+            artifacts = self._build_artifacts(y_eval, y_pred, report_text)
+            for _, p in artifacts.items():
+                mlflow.log_artifact(str(p))
+            return metrics
 
 
 def main() -> None:

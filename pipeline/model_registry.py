@@ -18,6 +18,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Optional
+import mlflow
+
+from mlflow.tracking import MlflowClient
 
 
 @dataclass(frozen=True)
@@ -41,6 +44,12 @@ class ModelRegistry:
         # Import mlflow.tracking.MlflowClient khi cần sử dụng
         self.client = None
 
+    def _get_client(self) -> MlflowClient:
+        """Lazy init MlflowClient."""
+        if self.client is None:
+            self.client = MlflowClient()
+        return self.client
+
     # --------------------------------------------------
     # Bước 10: Register model version từ 1 run
     # --------------------------------------------------
@@ -63,11 +72,10 @@ class ModelRegistry:
         Raises:
             NotImplementedError: Placeholder chưa implement.
         """
-        raise NotImplementedError
+        model_uri = f"runs:/{run_id}/{artifact_path}"
+        mv = mlflow.register_model(model_uri=model_uri, name=model_name)
+        return int(mv.version)
 
-    # --------------------------------------------------
-    # Bước 11: Promote stage (nếu team còn dùng stage)
-    # --------------------------------------------------
     def set_stage(
         self,
         model_name: str,
@@ -82,24 +90,26 @@ class ModelRegistry:
             version: Version number.
             stage: Mục tiêu stage.
             archive_existing_versions: Có archive version cũ không.
-
-        Raises:
-            NotImplementedError: Placeholder chưa implement.
         """
-        raise NotImplementedError
+        client = self._get_client()
+        client.transition_model_version_stage(
+            name=model_name,
+            version=str(version),
+            stage=stage,
+            archive_existing_versions=archive_existing_versions,
+        )
 
-    # --------------------------------------------------
     # Bước 12: Set alias (khuyến nghị)
-    # --------------------------------------------------
     def set_alias(self, model_name: str, alias: str, version: int) -> None:
         """Gán alias trỏ vào 1 version.
-
         Args:
             model_name: Tên registered model.
             alias: Tên alias (vd: production).
             version: Version number.
-
-        Raises:
-            NotImplementedError: Placeholder chưa implement.
         """
-        raise NotImplementedError
+        client = self._get_client()
+        client.set_registered_model_alias(
+            name=model_name,
+            alias=alias,
+            version=str(version),
+        )
