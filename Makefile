@@ -32,5 +32,5 @@ style:
 test:
 	${FLAKE8} ./${MAIN_FOLDER}/
 	${MYPY} ./${MAIN_FOLDER}/
-	${PYTEST} -s --durations=0 ${TEST_FOLDER}/
+	${PYTEST} -vv -rA --durations=10 ${TEST_FOLDER}/
 	${PYLINT} ./${MAIN_FOLDER}/
