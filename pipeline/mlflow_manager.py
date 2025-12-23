@@ -12,7 +12,6 @@ class MLflowManager:
 
     _instance: Optional["MLflowManager"] = None
     _configured: bool = False
-    _default_tags: Dict[str, str] = {}
 
     # --------------------------------------------------
     # Singleton
@@ -59,21 +58,3 @@ class MLflowManager:
     def get_default_tags(self) -> Dict[str, str]:
         """Trả về default tags cho MLflow runs (placeholder)."""
         return {}
-
-    def apply_default_tags(self) -> None:
-        """Apply default_tags vào active run hiện tại.
-
-        Quy ước sử dụng:
-        - Gọi method này SAU khi đã mlflow.start_run()
-        - Nếu chưa có active run -> raise để fail fast (đúng kỳ vọng).
-
-        Raises:
-            RuntimeError: nếu chưa có active run.
-        """
-        if mlflow.active_run() is None:
-            raise RuntimeError(
-                "No active MLflow run. Call mlflow.start_run() before apply_default_tags()."
-            )
-
-        for key, value in self._default_tags.items():
-            mlflow.set_tag(key, value)
